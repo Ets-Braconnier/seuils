@@ -96,6 +96,14 @@ figcaption {
   text-align: center;
 }
 
+.stock {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  min-height: 18px;
+}
+
 /* ======================
    TAILLE
 ====================== */
@@ -240,27 +248,8 @@ header.top {
 }
 
 /* ======================
-   RESPONSIVE
+   PRIX
 ====================== */
-
-@media (max-width: 700px),
-(pointer: coarse) {
-  body {
-    margin: 12px;
-  }
-
-  .catButtons {
-    display: none;
-  }
-
-  .catSelect {
-    display: block;
-  }
-
-  .thumb {
-    height: 180px;
-  }
-}
 
 .price {
   margin-top: auto;
@@ -283,6 +272,7 @@ header.top {
   gap: 4px;
   font-weight: 800;
   color: #333;
+  min-height: 32px;
 }
 
 .price-amount .int {
@@ -301,4 +291,27 @@ header.top {
   color: #444;
   position: relative;
   top: 10px;
+}
+
+/* ======================
+   RESPONSIVE
+====================== */
+
+@media (max-width: 700px),
+(pointer: coarse) {
+  body {
+    margin: 12px;
+  }
+
+  .catButtons {
+    display: none;
+  }
+
+  .catSelect {
+    display: block;
+  }
+
+  .thumb {
+    height: 180px;
+  }
 }

@@ -52,7 +52,27 @@
     const LENGTHS = [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190];
 
     let currentCategory = "18";
-    let priceMap = {};
+
+    let PRICE_MAP = Object.create(null);
+    let STOCK_MAP = Object.create(null);
+
+    function normalizePath(path) {
+      return String(path || "")
+        .trim()
+        .replaceAll("\\", "/")
+        .replace(/^\.?\//, "");
+    }
+
+    function normalizeSize(size) {
+      return String(size || "")
+        .toLowerCase()
+        .replace(/\s+/g, "")
+        .trim();
+    }
+
+    function getKey(path, taille) {
+      return `${normalizePath(path)}|${normalizeSize(taille)}`;
+    }
 
     function buildImagePath(width, length) {
       return `galerie/${width}/seuils-${width}-${length}cm.png`;
@@ -66,73 +86,90 @@
       return `${length} cm`;
     }
 
-    function getDenomination(width, length) {
-      return `Seuil PT 5cm ${width}cm ${length}cm`;
-    }
-
-    function normalize(str) {
-      return String(str || "")
-        .toLowerCase()
-        .replace(/\s+/g, " ")
-        .trim();
+    function getExcelSizeValue(length) {
+      return `${length}cm`;
     }
 
     function formatPrice(value) {
-      const num = Number(value);
+      const num = Number(String(value).replace(",", "."));
       if (!isFinite(num)) return null;
 
       const fixed = num.toFixed(2);
-      const [intPart, decPart] = fixed.split(".");
-      return { intPart, decPart };
+      const parts = fixed.split(".");
+      return {
+        intPart: parts[0],
+        decPart: parts[1]
+      };
+    }
+
+    function getStockLabel(value) {
+      if (value === undefined || value === null || String(value).trim() === "") return "";
+
+      const n = Number(String(value).replace(",", "."));
+      if (!Number.isFinite(n)) return "";
+
+      return n >= 1 ? "✅ En stock" : "⚠️ Rupture";
     }
 
     async function loadPrices() {
       try {
-        const response = await fetch("prix.xlsx");
+        const response = await fetch("prix.xlsx", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: "array" });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+        const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: "", raw: false });
 
-        const map = {};
+        const priceMap = Object.create(null);
+        const stockMap = Object.create(null);
 
         rows.forEach(row => {
-          const keys = Object.keys(row);
-          const normalizedRow = {};
+          const path = normalizePath(row.path || row.Path || row.PATH || "");
+          const taille = row.taille ?? row.Taille ?? row.TAILLE ?? "";
+          const price = row.prix_tvac ?? row.Prix_TVAC ?? row.PRIX_TVAC ?? row.prix ?? row.Prix ?? "";
+          const stock = row.disponible ?? row.Disponible ?? row.DISPO ?? row.dispo ?? row.stock ?? row.Stock ?? "";
 
-          keys.forEach(key => {
-            normalizedRow[normalize(key)] = row[key];
-          });
+          if (!path) return;
 
-          const denomination =
-            normalizedRow["denomination"] ||
-            normalizedRow["dénomination"] ||
-            normalizedRow["nom"] ||
-            normalizedRow["designation"] ||
-            normalizedRow["désignation"];
+          const key = getKey(path, taille);
 
-          const price =
-            normalizedRow["prix"] ||
-            normalizedRow["price"] ||
-            normalizedRow["tarif"] ||
-            normalizedRow["pv"] ||
-            normalizedRow["montant"];
+          if (price !== "") {
+            const num = Number(String(price).replace(",", ".").trim());
+            if (Number.isFinite(num)) {
+              priceMap[key] = num;
+            }
+          }
 
-          if (denomination && price !== "") {
-            map[normalize(denomination)] = price;
+          if (stock !== "") {
+            const numStock = Number(String(stock).replace(",", ".").trim());
+            if (Number.isFinite(numStock)) {
+              stockMap[key] = numStock;
+            }
           }
         });
 
-        priceMap = map;
+        PRICE_MAP = priceMap;
+        STOCK_MAP = stockMap;
       } catch (error) {
         console.error("Erreur chargement prix.xlsx :", error);
-        priceMap = {};
+        PRICE_MAP = Object.create(null);
+        STOCK_MAP = Object.create(null);
       }
     }
 
     function getPrice(width, length) {
-      const key = normalize(getDenomination(width, length));
-      return priceMap[key];
+      const path = buildImagePath(width, length);
+      const taille = getExcelSizeValue(length);
+      return PRICE_MAP[getKey(path, taille)];
+    }
+
+    function getStock(width, length) {
+      const path = buildImagePath(width, length);
+      const taille = getExcelSizeValue(length);
+      return STOCK_MAP[getKey(path, taille)];
     }
 
     function renderCategoryButtons() {
@@ -191,7 +228,7 @@
 
       const label = document.createElement("div");
       label.className = "price-label";
-      label.textContent = "Prix";
+      label.textContent = "Prix TVAC";
 
       const amount = document.createElement("div");
       amount.className = "price-amount";
@@ -210,6 +247,7 @@
 
       wrap.appendChild(label);
       wrap.appendChild(amount);
+
       return wrap;
     }
 
@@ -249,11 +287,16 @@
         size.className = "sizeBox";
         size.textContent = getLengthLabel(length);
 
+        const stock = document.createElement("div");
+        stock.className = "stock";
+        stock.textContent = getStockLabel(getStock(currentCategory, length));
+
         const price = createPriceNode(getPrice(currentCategory, length));
 
         figure.appendChild(caption);
         figure.appendChild(thumb);
         figure.appendChild(size);
+        figure.appendChild(stock);
         figure.appendChild(price);
 
         grid.appendChild(figure);
