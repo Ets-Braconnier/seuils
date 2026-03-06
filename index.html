@@ -18,6 +18,8 @@
 
   <div id="app"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
   <script>
     function sendHeight() {
       const h = Math.max(
@@ -50,6 +52,7 @@
     const LENGTHS = [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190];
 
     let currentCategory = "18";
+    let priceMap = {};
 
     function buildImagePath(width, length) {
       return `galerie/${width}/seuils-${width}-${length}cm.png`;
@@ -61,6 +64,75 @@
 
     function getLengthLabel(length) {
       return `${length} cm`;
+    }
+
+    function getDenomination(width, length) {
+      return `Seuil PT 5cm ${width}cm ${length}cm`;
+    }
+
+    function normalize(str) {
+      return String(str || "")
+        .toLowerCase()
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function formatPrice(value) {
+      const num = Number(value);
+      if (!isFinite(num)) return null;
+
+      const fixed = num.toFixed(2);
+      const [intPart, decPart] = fixed.split(".");
+      return { intPart, decPart };
+    }
+
+    async function loadPrices() {
+      try {
+        const response = await fetch("prix.xlsx");
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+
+        const map = {};
+
+        rows.forEach(row => {
+          const keys = Object.keys(row);
+          const normalizedRow = {};
+
+          keys.forEach(key => {
+            normalizedRow[normalize(key)] = row[key];
+          });
+
+          const denomination =
+            normalizedRow["denomination"] ||
+            normalizedRow["dénomination"] ||
+            normalizedRow["nom"] ||
+            normalizedRow["designation"] ||
+            normalizedRow["désignation"];
+
+          const price =
+            normalizedRow["prix"] ||
+            normalizedRow["price"] ||
+            normalizedRow["tarif"] ||
+            normalizedRow["pv"] ||
+            normalizedRow["montant"];
+
+          if (denomination && price !== "") {
+            map[normalize(denomination)] = price;
+          }
+        });
+
+        priceMap = map;
+      } catch (error) {
+        console.error("Erreur chargement prix.xlsx :", error);
+        priceMap = {};
+      }
+    }
+
+    function getPrice(width, length) {
+      const key = normalize(getDenomination(width, length));
+      return priceMap[key];
     }
 
     function renderCategoryButtons() {
@@ -113,6 +185,34 @@
       if (select) select.value = currentCategory;
     }
 
+    function createPriceNode(value) {
+      const wrap = document.createElement("div");
+      wrap.className = "price";
+
+      const label = document.createElement("div");
+      label.className = "price-label";
+      label.textContent = "Prix";
+
+      const amount = document.createElement("div");
+      amount.className = "price-amount";
+
+      const formatted = formatPrice(value);
+
+      if (!formatted) {
+        amount.textContent = "—";
+      } else {
+        amount.innerHTML = `
+          <span class="int">${formatted.intPart}</span>
+          <span class="dec">,${formatted.decPart}</span>
+          <span class="eur">€</span>
+        `;
+      }
+
+      wrap.appendChild(label);
+      wrap.appendChild(amount);
+      return wrap;
+    }
+
     function renderGrid() {
       const app = document.getElementById("app");
       app.innerHTML = "";
@@ -149,9 +249,12 @@
         size.className = "sizeBox";
         size.textContent = getLengthLabel(length);
 
+        const price = createPriceNode(getPrice(currentCategory, length));
+
         figure.appendChild(caption);
         figure.appendChild(thumb);
         figure.appendChild(size);
+        figure.appendChild(price);
 
         grid.appendChild(figure);
       });
@@ -166,8 +269,13 @@
       sendHeightSoon();
     }
 
-    renderSelect();
-    renderAll();
+    async function init() {
+      renderSelect();
+      await loadPrices();
+      renderAll();
+    }
+
+    init();
   </script>
 </body>
 
