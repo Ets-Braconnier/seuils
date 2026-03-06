@@ -262,6 +262,9 @@
       LENGTHS.forEach(length => {
         const productPrice = getPrice(currentCategory, length);
         const productStock = getStock(currentCategory, length);
+        if (productPrice === undefined) {
+          return;
+        }
 
         const figure = document.createElement("figure");
 
