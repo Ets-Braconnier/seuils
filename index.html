@@ -262,7 +262,7 @@
       LENGTHS.forEach(length => {
         const productPrice = getPrice(currentCategory, length);
         const productStock = getStock(currentCategory, length);
-        if (productPrice === undefined) {
+        if (productPrice === undefined && productStock === undefined) {
           return;
         }
 
