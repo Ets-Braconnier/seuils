@@ -50,30 +50,23 @@
 
   <div id="app" aria-live="polite"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
   <script>
-    // ================================
-    // CONFIG
-    // ================================
     const MANIFEST_URL = "prix/manifest.json";
     const WIDTHS = ["18", "22", "25", "28"];
-    const LENGTHS = [60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170];
+    const LENGTHS = [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190];
 
-    // image unique pour toutes les cases
-    const SEUIL_IMAGE = "galerie/seuils.png";
+    let currentWidth = "18";
+    let indexMap = new Map();
 
-    // ================================
-    // HELPERS
-    // ================================
     function pick(obj, keys, fallback = null) {
       for (const k of keys) {
         if (obj && obj[k] !== undefined && obj[k] !== null && obj[k] !== "") return obj[k];
       }
       return fallback;
-    }
-
-    function parseProducts(data) {
-      const arr = Array.isArray(data) ? data : (data?.items || data?.products || []);
-      return Array.isArray(arr) ? arr : [];
     }
 
     function getTitle(p) {
@@ -85,25 +78,17 @@
     }
 
     function getPrice(p) {
-      return pick(p, ["price", "prix", "tvac", "price_tvac"], null);
+      return pick(p, ["price", "prix", "tvac", "price_tvac", "prix_tvac"], null);
     }
 
     function getStock(p) {
-      return pick(p, ["stock", "qty", "quantite", "qte"], null);
+      return pick(p, ["stock", "qty", "quantite", "qte", "disponible"], null);
     }
 
-    // essaie de lire largeur/longueur depuis champs dédiés
-    function getWidthFromFields(p) {
-      const w = pick(p, ["largeur", "width", "largeur_cm", "w"], null);
-      return (w !== null) ? String(w) : null;
+    function getImage(p) {
+      return pick(p, ["path", "image", "img", "photo"], "galerie/seuils.png");
     }
 
-    function getLengthFromFields(p) {
-      const l = pick(p, ["longueur", "length", "longueur_cm", "l"], null);
-      return (l !== null) ? String(l) : null;
-    }
-
-    // fallback: parse dans le titre (ex: "Seuil pierre bleue 22 cm x 120 cm" etc.)
     function parseWidthFromText(txt) {
       const t = String(txt || "").toLowerCase().replace(",", ".");
       const m = t.match(/\b(18|22|25|28)\s*cm\b/);
@@ -112,9 +97,7 @@
 
     function parseLengthFromText(txt) {
       const t = String(txt || "").toLowerCase().replace(",", ".");
-      // cherche un "xxx cm" qui ressemble à une longueur (60..200)
       const all = [...t.matchAll(/\b(\d{2,3})\s*cm\b/g)].map(x => x[1]);
-      // on prend la première valeur dans [60..170] si possible
       for (const v of all) {
         const n = Number(v);
         if (LENGTHS.includes(n)) return String(n);
@@ -122,20 +105,28 @@
       return null;
     }
 
-    // indexation pour lookup rapide
+    function getLength(p) {
+      const taille = pick(p, ["taille", "size", "longueur", "length"], "");
+      const fromTaille = String(taille).match(/(\d{2,3})\s*cm/i);
+      if (fromTaille) return fromTaille[1];
+
+      return parseLengthFromText(getTitle(p));
+    }
+
     function buildIndex(products) {
-      const map = new Map(); // key = "W|L" -> product
+      const map = new Map();
+
       for (const p of products) {
         const title = getTitle(p);
-
-        const w = getWidthFromFields(p) || parseWidthFromText(title);
-        const l = getLengthFromFields(p) || parseLengthFromText(title);
+        const w = parseWidthFromText(title);
+        const l = getLength(p);
 
         if (!w || !l) continue;
         if (!WIDTHS.includes(String(w))) continue;
 
-        map.set(`${String(w)}|${String(l)}`, p);
+        map.set(`${w}|${l}`, p);
       }
+
       return map;
     }
 
@@ -148,15 +139,49 @@
       return { intPart, decPart };
     }
 
-    // ================================
-    // STATE
-    // ================================
-    let currentWidth = "18";
-    let indexMap = new Map();
+    function formatStock(stock) {
+      if (stock === null || stock === undefined || stock === "") return "";
+      const n = Number(String(stock).replace(",", "."));
+      if (!Number.isFinite(n)) return String(stock);
+      return String(Math.trunc(n));
+    }
 
-    // ================================
-    // RENDER
-    // ================================
+    async function fetchJson(url) {
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status} sur ${url}`);
+      return res.json();
+    }
+
+    async function readExcelFile(xlsxUrl) {
+      const res = await fetch(xlsxUrl, { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status} sur ${xlsxUrl}`);
+
+      const buf = await res.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      if (!ws) return [];
+
+      return XLSX.utils.sheet_to_json(ws, { defval: "", raw: false });
+    }
+
+    async function loadProductsFromFolder() {
+      const files = await fetchJson(MANIFEST_URL);
+      if (!Array.isArray(files)) return [];
+
+      const all = [];
+
+      for (const fname of files) {
+        try {
+          const rows = await readExcelFile(`prix/${fname}`);
+          all.push(...rows);
+        } catch (e) {
+          console.warn("Fichier ignoré :", fname, e);
+        }
+      }
+
+      return all;
+    }
+
     function render() {
       const root = document.getElementById("app");
 
@@ -166,54 +191,53 @@
 
         const title = `Seuil ${currentWidth} cm × ${len} cm`;
         const pdfUrl = p ? (getPdf(p) || "#") : "#";
-
         const price = p ? formatPrice(getPrice(p)) : null;
-        const stock = p ? getStock(p) : null;
+        const stock = p ? formatStock(getStock(p)) : "";
+        const image = p ? getImage(p) : "galerie/seuils.png";
 
         const titleHtml = (pdfUrl && pdfUrl !== "#")
           ? `<a class="titleLink" href="${pdfUrl}" target="_blank" rel="noopener">${title}<span class="pdfTag">PDF</span></a>`
           : `<span>${title}</span>`;
 
         const stockHtml = `
-  <div class="stock">
-    ${stock ? `Stock : ${stock}` : ``}
-  </div>
-`;
+        <div class="stock">
+          ${stock !== "" ? `Stock : ${stock}` : ``}
+        </div>
+      `;
 
         const priceHtml = `
-  <div class="price">
-    <div class="price-label">Tvac</div>
-    <div class="price-amount">
-      ${price ? `<span class="int">${price.intPart}</span>
-      <span class="dec">,${price.decPart}</span>
-      <span class="eur">€</span>` : ``}
-    </div>
-  </div>
-`;
+        <div class="price">
+          <div class="price-label">Tvac</div>
+          <div class="price-amount">
+            ${price ? `
+              <span class="int">${price.intPart}</span>
+              <span class="dec">,${price.decPart}</span>
+              <span class="eur">€</span>
+            ` : ``}
+          </div>
+        </div>
+      `;
 
         return `
-          <figure class="seuilCard">
-            <figcaption>${titleHtml}</figcaption>
+        <figure class="seuilCard">
+          <figcaption>${titleHtml}</figcaption>
 
-            <div class="thumb seuilThumb">
-              <img src="${SEUIL_IMAGE}" alt="Seuils">
-            </div>
+          <div class="thumb seuilThumb">
+            <img src="${image}" alt="Seuil ${currentWidth} cm">
+          </div>
 
-            ${stockHtml}
+          ${stockHtml}
 
-            <div class="priceWrap">
-              ${priceHtml}
-            </div>
-          </figure>
-        `;
+          <div class="priceWrap">
+            ${priceHtml}
+          </div>
+        </figure>
+      `;
       }).join("");
 
       root.innerHTML = `<div class="grid">${cards}</div>`;
     }
 
-    // ================================
-    // UI EVENTS
-    // ================================
     function setWidth(w) {
       currentWidth = String(w);
       document.getElementById("catSelect").value = currentWidth;
@@ -235,19 +259,13 @@
       setWidth(e.target.value);
     });
 
-
     (async function init() {
       try {
-        const res = await fetch(MANIFEST_URL, { cache: "no-store" });
-        const data = await res.json();
-        const products = parseProducts(data);
-
+        const products = await loadProductsFromFolder();
         indexMap = buildIndex(products);
-
         setWidth(currentWidth);
       } catch (err) {
         console.error(err);
-
         indexMap = new Map();
         setWidth(currentWidth);
       }
