@@ -260,6 +260,9 @@
       grid.className = "grid";
 
       LENGTHS.forEach(length => {
+        const productPrice = getPrice(currentCategory, length);
+        const productStock = getStock(currentCategory, length);
+
         const figure = document.createElement("figure");
 
         const caption = document.createElement("figcaption");
@@ -290,9 +293,9 @@
 
         const stock = document.createElement("div");
         stock.className = "stock";
-        stock.textContent = getStockLabel(getStock(currentCategory, length));
+        stock.textContent = getStockLabel(productStock);
 
-        const price = createPriceNode(getPrice(currentCategory, length));
+        const price = createPriceNode(productPrice);
 
         figure.appendChild(caption);
         figure.appendChild(thumb);
