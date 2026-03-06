@@ -1,170 +1,43 @@
-/* =========================================================
-   CATALOGUE PLÂTRES & ENDUITS (CONTENU UNIQUEMENT)
-   - Sans header / menu / hero / map
-   - Conserve catégories + grille produits + prix/stock
-========================================================= */
-
-/* ========== BASE ========== */
-:root {
-  --text: #2b2b2b;
-  --muted: #666;
-  --line: #e6e6e6;
-  --soft: #f6f6f6;
-  --accent: #d70000;
-  --max: 1250px;
-  --radius: 14px;
-
-  --cat-gap: 6px;
-}
-
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
-html,
-body {
-  overflow-x: hidden;
-  max-width: 100%;
+/* ======================
+   BASE
+====================== */
+
+:root {
+  --cat-gap: 6px;
 }
 
 body {
-  margin: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  color: var(--text);
-  background: #fff;
+  font-family: Arial, sans-serif;
+  margin: 20px;
+  line-height: 1.4;
 }
-
-img {
-  max-width: 100%;
-  height: auto;
-  display: block;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
-}
-
-.wrap {
-  width: min(var(--max), 100% - 32px);
-  margin: 0 auto;
-  padding: 14px 0;
-}
-
-/* ========== CATÉGORIES (BOUTONS + SELECT) ========== */
-
-.catButtons {
-  display: flex;
-  gap: var(--cat-gap);
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  padding: 14px 0;
-
-  border-top: 1px solid rgba(198, 160, 74, .25);
-  border-bottom: 1px solid rgba(158, 124, 50, .45);
-}
-
-.catBtn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-
-  padding: 10px 14px;
-  min-height: 130px;
-
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  flex: 0 0 auto;
-}
-
-.catBtn:focus-visible {
-  outline: 2px solid rgba(215, 0, 0, .35);
-  outline-offset: 3px;
-  border-radius: 10px;
-}
-
-.catBtn .catIcon {
-  width: 72px;
-  height: 72px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  background: var(--soft);
-  border-radius: 50%;
-  border: 1.5px solid #c6a04a;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, .70) inset,
-    0 1px 2px rgba(255, 255, 255, .35),
-    0 1px 4px rgba(158, 124, 50, .55);
-}
-
-.catBtn:hover .catIcon {
-  border-color: #d4b05c;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, .70) inset,
-    0 2px 6px rgba(158, 124, 50, .75);
-}
-
-.catBtn .catIcon img {
-  max-width: 80%;
-  max-height: 80%;
-  object-fit: contain;
-}
-
-.catBtn span {
-  font-size: 11px;
-  font-weight: 600;
-  text-align: center;
-  line-height: 1.2;
-  color: #222;
-  margin-top: 2px;
-}
-
-.catBtn.active .catIcon {
-  border-color: #9e7c32;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, .70) inset,
-    0 2px 8px rgba(158, 124, 50, .9);
-}
-
-.catBtn.active span {
-  color: #000;
-}
-
-.catSelect {
-  display: none;
-  width: 100%;
-  max-width: 360px;
-  padding: 10px 12px;
-  border: 1px solid #ccc;
-  border-radius: 10px;
-  font-size: 14px;
-  background: #fff;
-}
-
-/* ========== CATALOGUE ========== */
 
 #app {
-  width: min(var(--max), 100% - 32px);
-  margin: 12px auto 24px;
+  margin-top: 12px;
 }
+
+/* ======================
+   GRILLE PRODUITS
+====================== */
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, 260px);
   gap: 10px;
-  align-items: stretch;
+  justify-content: center;
+  align-items: start;
+}
+
+@media (max-width: 560px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 figure {
@@ -178,25 +51,8 @@ figure {
   height: 100%;
 }
 
-figcaption {
-  font-size: 12px;
-  font-weight: 600;
-  text-align: center;
-  background: #f2f2f2;
-  width: 100%;
-  padding: 6px;
-  margin: 0 0 6px 0;
-  border-radius: 8px;
-
-  height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1.2;
-}
-
 .thumb {
-  height: 90px;
+  height: 140px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -206,115 +62,193 @@ figcaption {
 }
 
 .thumb img {
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
   border-radius: 10px;
 }
 
-.muted {
-  color: var(--muted);
-  font-size: 13px;
+figcaption {
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  background: #f2f2f2;
+  width: 100%;
+  padding: 6px;
+  margin: 0 0 6px 0;
+  border-radius: 8px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
 }
+
+/* ======================
+   TEXTE / ÉTATS
+====================== */
 
 .missing {
   font-size: 12px;
   color: #c00;
   margin-top: 8px;
-}
-
-.stock {
-  margin-top: 6px;
-  font-size: 12px;
-  font-weight: 700;
   text-align: center;
 }
 
-.size {
-  display: flex;
-  align-items: center;
-  margin-top: 4px;
-}
+/* ======================
+   TAILLE
+====================== */
 
-.size select {
-  width: 100%;
-  padding: 6px 8px;
+.sizeBox {
+  margin-top: 8px;
+  padding: 8px 10px;
   border: 1px solid #ccc;
   border-radius: 10px;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  background: #fff;
 }
 
-/* PRIX */
-.price {
-  margin-top: auto;
-  padding: 6px 0 2px;
+/* ======================
+   HEADER
+====================== */
+
+header.top {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin-bottom: 25px;
+}
+
+/* ======================
+   NAV / CATÉGORIES
+====================== */
+
+.catButtons {
+  display: flex;
+  gap: var(--cat-gap);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding: 14px 0;
+  width: 100%;
+  border-top: 1px solid rgba(198, 160, 74, 0.25);
+  border-bottom: 1px solid rgba(158, 124, 50, 0.45);
+}
+
+.catBtn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  min-height: 130px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  flex: 0 0 auto;
 }
 
-.price-label {
+.catBtn .catIcon {
+  width: 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #f6f6f6;
+  border: 1.5px solid #c6a04a;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.70) inset,
+    0 1px 2px rgba(255, 255, 255, 0.35),
+    0 1px 4px rgba(158, 124, 50, 0.55);
+}
+
+.catBtn:hover .catIcon {
+  border-color: #d4b05c;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.70) inset,
+    0 2px 6px rgba(158, 124, 50, 0.75);
+}
+
+.catBtn.active .catIcon {
+  border-color: #9e7c32;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.70) inset,
+    0 2px 8px rgba(158, 124, 50, 0.9);
+}
+
+.catLabel {
   font-size: 11px;
   font-weight: 600;
-  color: #555;
+  text-align: center;
+  line-height: 1.2;
+  color: #222;
+  margin-top: 2px;
 }
 
-.price-amount {
-  display: flex;
-  align-items: flex-start;
-  gap: 4px;
+.catBtn.active .catLabel {
+  color: #000;
+}
+
+.catIconText {
+  background: #fff;
+}
+
+.catIconText span {
+  font-size: 18px;
   font-weight: 800;
-  color: #333;
+  color: #222;
+  line-height: 1;
 }
 
-.price-amount .int {
-  font-size: 26px;
+/* ======================
+   SELECT MOBILE
+====================== */
+
+.catSelect {
+  display: none;
+  width: 100%;
+  max-width: 360px;
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  font-size: 14px;
+  background: #fff;
 }
 
-.price-amount .dec {
-  font-size: 13px;
-  position: relative;
-  top: 2px;
+/* ======================
+   BANDEAU
+====================== */
+
+.nav-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  column-gap: 16px;
+  width: 100%;
 }
 
-.price-amount .eur {
-  font-size: 13px;
-  font-weight: 700;
-  color: #444;
-  position: relative;
-  top: 10px;
+#catButtons {
+  width: 100% !important;
+  min-width: 0;
 }
 
-/* liens titres produits (PDF) */
-.titleLink,
-.titleLink:visited,
-.titleLink:active,
-.titleLink:focus {
-  color: inherit;
-  text-decoration: none;
-  font-weight: 600;
-}
+/* ======================
+   RESPONSIVE
+====================== */
 
-.titleLink:hover {
-  opacity: .75;
-  text-decoration: none;
-}
+@media (max-width: 700px),
+(pointer: coarse) {
+  body {
+    margin: 12px;
+  }
 
-.pdfTag {
-  font-size: 9px;
-  font-weight: 700;
-  background: #e9ecef;
-  color: #555;
-  padding: 2px 6px;
-  border-radius: 6px;
-  margin-left: 6px;
-  letter-spacing: .5px;
-}
-
-/* ========== RESPONSIVE ========== */
-@media (max-width:700px) {
   .catButtons {
     display: none;
   }
@@ -323,28 +257,7 @@ figcaption {
     display: block;
   }
 
-  #app {
-    margin-top: 8px;
+  .thumb {
+    height: 180px;
   }
-}
-
-@media (max-width:380px) {
-  .wrap {
-    width: calc(100% - 24px);
-  }
-
-  #app {
-    width: calc(100% - 24px);
-  }
-}
-
-/* ===== SEUILS : vignettes texte dans le rond ===== */
-.catIcon.textIcon {
-  font-weight: 900;
-  color: #111;
-}
-
-.catIcon.textIcon span {
-  font-size: 20px;
-  line-height: 1;
 }

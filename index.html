@@ -4,272 +4,170 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <title>Seuils</title>
-  <meta name="description"
-    content="Seuils : catalogue par largeur (18, 22, 25, 28 cm) et longueurs (60 à 170 cm) avec prix et stock." />
-  <meta name="robots" content="index,follow" />
-
+  <title>Seuils — Galerie</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 
-<body class="page-seuils">
-  <div class="wrap">
-
-    <!-- VIGNETTES LARGEURS -->
-    <div class="catButtons" role="tablist" aria-label="Largeurs de seuils">
-      <button class="catBtn active" type="button" data-cat="18" role="tab" aria-selected="true">
-        <span class="catIcon textIcon" aria-hidden="true"><span>18</span></span>
-        <span>Largeur 18 cm</span>
-      </button>
-
-      <button class="catBtn" type="button" data-cat="22" role="tab" aria-selected="false">
-        <span class="catIcon textIcon" aria-hidden="true"><span>22</span></span>
-        <span>Largeur 22 cm</span>
-      </button>
-
-      <button class="catBtn" type="button" data-cat="25" role="tab" aria-selected="false">
-        <span class="catIcon textIcon" aria-hidden="true"><span>25</span></span>
-        <span>Largeur 25 cm</span>
-      </button>
-
-      <button class="catBtn" type="button" data-cat="28" role="tab" aria-selected="false">
-        <span class="catIcon textIcon" aria-hidden="true"><span>28</span></span>
-        <span>Largeur 28 cm</span>
-      </button>
+<body>
+  <header class="top">
+    <div class="nav-row">
+      <div id="catButtons" class="catButtons"></div>
+      <select id="catSelect" class="catSelect" aria-label="Choisir une largeur de seuil"></select>
     </div>
+  </header>
 
-    <!-- SELECT mobile -->
-    <select class="catSelect" id="catSelect" aria-label="Largeur de seuil">
-      <option value="18">Largeur 18 cm</option>
-      <option value="22">Largeur 22 cm</option>
-      <option value="25">Largeur 25 cm</option>
-      <option value="28">Largeur 28 cm</option>
-    </select>
-  </div>
-
-  <div id="app" aria-live="polite"></div>
-
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <div id="app"></div>
 
   <script>
-    const MANIFEST_URL = "prix/manifest.json";
-    const WIDTHS = ["18", "22", "25", "28"];
+    function sendHeight() {
+      const h = Math.max(
+        document.body ? document.body.scrollHeight : 0,
+        document.documentElement ? document.documentElement.scrollHeight : 0
+      );
+      if (window.parent !== window) {
+        window.parent.postMessage({ type: "resize", height: h }, "*");
+      }
+    }
+
+    function sendHeightSoon() {
+      requestAnimationFrame(() => {
+        sendHeight();
+        setTimeout(sendHeight, 150);
+        setTimeout(sendHeight, 600);
+      });
+    }
+
+    window.addEventListener("load", sendHeightSoon);
+    window.addEventListener("resize", sendHeightSoon);
+
+    const CATEGORIES = [
+      { key: "18", label: "18cm" },
+      { key: "22", label: "22cm" },
+      { key: "25", label: "25cm" },
+      { key: "28", label: "28cm" }
+    ];
+
     const LENGTHS = [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190];
 
-    let currentWidth = "18";
-    let indexMap = new Map();
+    let currentCategory = "18";
 
-    function pick(obj, keys, fallback = null) {
-      for (const k of keys) {
-        if (obj && obj[k] !== undefined && obj[k] !== null && obj[k] !== "") return obj[k];
-      }
-      return fallback;
+    function buildImagePath(width, length) {
+      return `galerie/${width}/seuils-${width}-${length}cm.png`;
     }
 
-    function getTitle(p) {
-      return pick(p, ["denomination", "name", "title", "nom"], "");
+    function getProductTitle(width) {
+      return `Seuil ${width} cm`;
     }
 
-    function getPdf(p) {
-      return pick(p, ["pdf", "pdfUrl", "url", "link"], "");
+    function getLengthLabel(length) {
+      return `${length} cm`;
     }
 
-    function getPrice(p) {
-      return pick(p, ["price", "prix", "tvac", "price_tvac", "prix_tvac"], null);
-    }
+    function renderCategoryButtons() {
+      const wrap = document.getElementById("catButtons");
+      wrap.innerHTML = "";
 
-    function getStock(p) {
-      return pick(p, ["stock", "qty", "quantite", "qte", "disponible"], null);
-    }
+      CATEGORIES.forEach(cat => {
+        const btn = document.createElement("button");
+        btn.className = "catBtn" + (cat.key === currentCategory ? " active" : "");
+        btn.type = "button";
+        btn.dataset.cat = cat.key;
 
-    function getImage(p) {
-      return pick(p, ["path", "image", "img", "photo"], "galerie/seuils.png");
-    }
-
-    function parseWidthFromText(txt) {
-      const t = String(txt || "").toLowerCase().replace(",", ".");
-      const m = t.match(/\b(18|22|25|28)\s*cm\b/);
-      return m ? m[1] : null;
-    }
-
-    function parseLengthFromText(txt) {
-      const t = String(txt || "").toLowerCase().replace(",", ".");
-      const all = [...t.matchAll(/\b(\d{2,3})\s*cm\b/g)].map(x => x[1]);
-      for (const v of all) {
-        const n = Number(v);
-        if (LENGTHS.includes(n)) return String(n);
-      }
-      return null;
-    }
-
-    function getLength(p) {
-      const taille = pick(p, ["taille", "size", "longueur", "length"], "");
-      const fromTaille = String(taille).match(/(\d{2,3})\s*cm/i);
-      if (fromTaille) return fromTaille[1];
-
-      return parseLengthFromText(getTitle(p));
-    }
-
-    function buildIndex(products) {
-      const map = new Map();
-
-      for (const p of products) {
-        const title = getTitle(p);
-        const w = parseWidthFromText(title);
-        const l = getLength(p);
-
-        if (!w || !l) continue;
-        if (!WIDTHS.includes(String(w))) continue;
-
-        map.set(`${w}|${l}`, p);
-      }
-
-      return map;
-    }
-
-    function formatPrice(price) {
-      if (price === null || price === undefined || price === "") return null;
-      const n = Number(String(price).replace(",", "."));
-      if (!Number.isFinite(n)) return null;
-      const fixed = n.toFixed(2);
-      const [intPart, decPart] = fixed.split(".");
-      return { intPart, decPart };
-    }
-
-    function formatStock(stock) {
-      if (stock === null || stock === undefined || stock === "") return "";
-      const n = Number(String(stock).replace(",", "."));
-      if (!Number.isFinite(n)) return String(stock);
-      return String(Math.trunc(n));
-    }
-
-    async function fetchJson(url) {
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status} sur ${url}`);
-      return res.json();
-    }
-
-    async function readExcelFile(xlsxUrl) {
-      const res = await fetch(xlsxUrl, { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status} sur ${xlsxUrl}`);
-
-      const buf = await res.arrayBuffer();
-      const wb = XLSX.read(buf, { type: "array" });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      if (!ws) return [];
-
-      return XLSX.utils.sheet_to_json(ws, { defval: "", raw: false });
-    }
-
-    async function loadProductsFromFolder() {
-      const files = await fetchJson(MANIFEST_URL);
-      if (!Array.isArray(files)) return [];
-
-      const all = [];
-
-      for (const fname of files) {
-        try {
-          const rows = await readExcelFile(`prix/${fname}`);
-          all.push(...rows);
-        } catch (e) {
-          console.warn("Fichier ignoré :", fname, e);
-        }
-      }
-
-      return all;
-    }
-
-    function render() {
-      const root = document.getElementById("app");
-
-      const cards = LENGTHS.map(len => {
-        const key = `${currentWidth}|${len}`;
-        const p = indexMap.get(key);
-
-        const title = `Seuil ${currentWidth} cm × ${len} cm`;
-        const pdfUrl = p ? (getPdf(p) || "#") : "#";
-        const price = p ? formatPrice(getPrice(p)) : null;
-        const stock = p ? formatStock(getStock(p)) : "";
-        const image = p ? getImage(p) : "galerie/seuils.png";
-
-        const titleHtml = (pdfUrl && pdfUrl !== "#")
-          ? `<a class="titleLink" href="${pdfUrl}" target="_blank" rel="noopener">${title}<span class="pdfTag">PDF</span></a>`
-          : `<span>${title}</span>`;
-
-        const stockHtml = `
-        <div class="stock">
-          ${stock !== "" ? `Stock : ${stock}` : ``}
-        </div>
-      `;
-
-        const priceHtml = `
-        <div class="price">
-          <div class="price-label">Tvac</div>
-          <div class="price-amount">
-            ${price ? `
-              <span class="int">${price.intPart}</span>
-              <span class="dec">,${price.decPart}</span>
-              <span class="eur">€</span>
-            ` : ``}
+        btn.innerHTML = `
+          <div class="catIcon catIconText">
+            <span>${cat.label}</span>
           </div>
-        </div>
-      `;
+          <span class="catLabel">Seuil</span>
+        `;
 
-        return `
-        <figure class="seuilCard">
-          <figcaption>${titleHtml}</figcaption>
+        btn.addEventListener("click", () => {
+          currentCategory = cat.key;
+          syncSelect();
+          renderAll();
+        });
 
-          <div class="thumb seuilThumb">
-            <img src="${image}" alt="Seuil ${currentWidth} cm">
-          </div>
-
-          ${stockHtml}
-
-          <div class="priceWrap">
-            ${priceHtml}
-          </div>
-        </figure>
-      `;
-      }).join("");
-
-      root.innerHTML = `<div class="grid">${cards}</div>`;
+        wrap.appendChild(btn);
+      });
     }
 
-    function setWidth(w) {
-      currentWidth = String(w);
-      document.getElementById("catSelect").value = currentWidth;
+    function renderSelect() {
+      const select = document.getElementById("catSelect");
+      select.innerHTML = "";
 
-      document.querySelectorAll(".catBtn").forEach(btn => {
-        const active = btn.dataset.cat === currentWidth;
-        btn.classList.toggle("active", active);
-        btn.setAttribute("aria-selected", active ? "true" : "false");
+      CATEGORIES.forEach(cat => {
+        const option = document.createElement("option");
+        option.value = cat.key;
+        option.textContent = cat.label;
+        if (cat.key === currentCategory) option.selected = true;
+        select.appendChild(option);
       });
 
-      render();
+      select.onchange = () => {
+        currentCategory = select.value;
+        renderAll();
+      };
     }
 
-    document.querySelectorAll(".catBtn").forEach(btn => {
-      btn.addEventListener("click", () => setWidth(btn.dataset.cat));
-    });
+    function syncSelect() {
+      const select = document.getElementById("catSelect");
+      if (select) select.value = currentCategory;
+    }
 
-    document.getElementById("catSelect").addEventListener("change", (e) => {
-      setWidth(e.target.value);
-    });
+    function renderGrid() {
+      const app = document.getElementById("app");
+      app.innerHTML = "";
 
-    (async function init() {
-      try {
-        const products = await loadProductsFromFolder();
-        indexMap = buildIndex(products);
-        setWidth(currentWidth);
-      } catch (err) {
-        console.error(err);
-        indexMap = new Map();
-        setWidth(currentWidth);
-      }
-    })();
+      const grid = document.createElement("div");
+      grid.className = "grid";
+
+      LENGTHS.forEach(length => {
+        const figure = document.createElement("figure");
+
+        const caption = document.createElement("figcaption");
+        caption.textContent = getProductTitle(currentCategory);
+
+        const thumb = document.createElement("div");
+        thumb.className = "thumb";
+
+        const img = document.createElement("img");
+        img.src = buildImagePath(currentCategory, length);
+        img.alt = `${getProductTitle(currentCategory)} ${getLengthLabel(length)}`;
+        img.loading = "lazy";
+
+        img.onerror = function () {
+          this.style.display = "none";
+          const missing = document.createElement("div");
+          missing.className = "missing";
+          missing.textContent = "Image manquante";
+          thumb.appendChild(missing);
+          sendHeightSoon();
+        };
+
+        thumb.appendChild(img);
+
+        const size = document.createElement("div");
+        size.className = "sizeBox";
+        size.textContent = getLengthLabel(length);
+
+        figure.appendChild(caption);
+        figure.appendChild(thumb);
+        figure.appendChild(size);
+
+        grid.appendChild(figure);
+      });
+
+      app.appendChild(grid);
+      sendHeightSoon();
+    }
+
+    function renderAll() {
+      renderCategoryButtons();
+      renderGrid();
+      sendHeightSoon();
+    }
+
+    renderSelect();
+    renderAll();
   </script>
 </body>
 
