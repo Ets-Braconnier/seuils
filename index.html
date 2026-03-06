@@ -71,7 +71,8 @@
     }
 
     function getKey(path, taille) {
-      return `${normalizePath(path)}|${normalizeSize(taille)}`;
+      const size = String(taille).replace("cm", "").trim();
+      return `${normalizePath(path)}|${size}`;
     }
 
     function buildImagePath(width, length) {
@@ -87,7 +88,7 @@
     }
 
     function getExcelSizeValue(length) {
-      return `${length}cm`;
+      return `${length}`;
     }
 
     function formatPrice(value) {
