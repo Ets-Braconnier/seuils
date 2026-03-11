@@ -262,9 +262,6 @@
       LENGTHS.forEach(length => {
         const productPrice = getPrice(currentCategory, length);
         const productStock = getStock(currentCategory, length);
-        if (productPrice === undefined && productStock === undefined) {
-          return;
-        }
 
         const figure = document.createElement("figure");
 
@@ -296,7 +293,7 @@
 
         const stock = document.createElement("div");
         stock.className = "stock";
-        stock.textContent = getStockLabel(productStock);
+        stock.textContent = getStockLabel(productStock) || "";
 
         const price = createPriceNode(productPrice);
 
@@ -321,6 +318,8 @@
 
     async function init() {
       renderSelect();
+      renderAll();
+
       await loadPrices();
       renderAll();
     }
